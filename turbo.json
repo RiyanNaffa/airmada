@@ -18,7 +18,7 @@
     },
     "test": {
       "outputs": ["coverage/**"],
-      "env": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]
+      "env": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "OPENROUTER_API_KEY", "ORS_API_KEY", "NODE_ENV" ]
     }
   }
 }
