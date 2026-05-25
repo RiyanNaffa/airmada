@@ -1,0 +1,23 @@
+# Anomaly Detection Thresholds & Configuration
+
+# GPS Detection Thresholds (minutes)
+GPS_SILENT_WARNING_MINUTES = 15
+GPS_SILENT_CRITICAL_MINUTES = 30
+
+# Route Deviation Thresholds (kilometers)
+ROUTE_DEVIATION_WARNING_KM = 2.0
+ROUTE_DEVIATION_CRITICAL_KM = 5.0
+
+# Delivery Delay Thresholds (minutes)
+DELIVERY_DELAY_WARNING_MINUTES = 30
+DELIVERY_DELAY_CRITICAL_MINUTES = 60
+
+# Speed Thresholds (km/h)
+SPEED_WARNING_KMH = 100
+SPEED_CRITICAL_KMH = 120
+
+# Confidence Scores
+GPS_CONFIDENCE = 0.95
+ROUTE_CONFIDENCE = 0.90
+DELIVERY_CONFIDENCE = 0.99
+SPEED_CONFIDENCE = 0.85

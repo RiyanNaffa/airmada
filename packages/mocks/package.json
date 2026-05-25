@@ -1,0 +1,17 @@
+{
+  "name": "@airmada/mocks",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "mocks": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint . -c ../../eslint.config.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@airmada/types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

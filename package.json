@@ -1,0 +1,43 @@
+{
+  "name": "airmada",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,md,yml}\" --ignore-path .gitignore",
+    "type-check": "turbo type-check",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.7.4",
+    "prettier-plugin-tailwindcss": "^0.6.0",
+    "supabase": "^2.79.0",
+    "turbo": "^2.8.17",
+    "typescript": "^5.4.0"
+  },
+  "lint-staged": {
+    "apps/web/**/*.{ts,tsx}": [
+      "npx prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "npx prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "packageManager": "npm@10.9.3",
+  "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.105.3",
+    "recharts": "^3.8.1"
+  }
+}

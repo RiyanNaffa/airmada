@@ -1,0 +1,23 @@
+@import "tailwindcss";
+/* @import "tailwindcss/preflight"; */
+/* @tailwind base; */
+/* @tailwind components; */
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+  }
+}
+
+/* Leaflet map fix — pastikan tidak ter-override oleh Tailwind reset */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+}
