@@ -34,13 +34,14 @@
     "recharts": "^3.8.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
+    "@tailwindcss/postcss": "^4.3.0",
+    "tailwindcss": "^4",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.3",
     "@playwright/test": "^1.58.2",
-    "@tailwindcss/postcss": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -55,7 +56,6 @@
     "eslint-config-next": "16.1.6",
     "jsdom": "^29.0.0",
     "msw": "^2.12.11",
-    "tailwindcss": "^4",
     "typescript": "^5",
     "typescript-eslint": "^8.57.1",
     "vitest": "^4.1.0"
