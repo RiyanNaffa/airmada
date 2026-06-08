@@ -386,11 +386,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [])
 
   // Initialize GPS publishing for drivers
-  // This hook will automatically publish location every 15 seconds
   // Only for users with DRIVER role
   useGpsPublish({
     enabled: currentUser.role?.toUpperCase() === 'DRIVER',
-    interval: 15000, // Publish every 15 seconds
+    interval: 5000, // Publish every 5 seconds
     onError: handleGpsError,
     onSuccess: handleGpsSuccess,
   })
