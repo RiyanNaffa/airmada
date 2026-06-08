@@ -515,8 +515,10 @@ export default function FleetPage() {
           </h1>
           <p className="mt-1 text-sm text-slate-500">Manage and monitor your vehicle fleet</p>
         </div>
-        {/* TODO: Hubungkan ke modal Add Vehicle atau router.push('/fleet/new') */}
-        <button className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-slate-700 active:scale-[0.98]">
+        <button
+          onClick={() => router.push('/fleet/new')}
+          className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-orange-700 active:scale-[0.98]"
+        >
           <Plus size={16} />
           <span className="hidden sm:inline">Add Vehicle</span>
           <span className="sm:hidden">Add</span>

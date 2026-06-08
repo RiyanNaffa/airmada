@@ -36,8 +36,10 @@
   ],
   "packageManager": "npm@10.9.3",
   "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.3",
+    "react-hook-form": "^7.78.0",
     "recharts": "^3.8.1"
   }
 }
