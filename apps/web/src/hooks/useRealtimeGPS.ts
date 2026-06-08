@@ -96,12 +96,12 @@ export function useRealtimeGPS(options: UseRealtimeGpsOptions = {}) {
                 Authorization: `Bearer ${accessToken}`,
               },
             },
-            auth: {
-              persistSession: false,
-            },
+            // auth: {
+            //   persistSession: false,
+            // },
           }
         )
-        supabase.realtime.setAuth(accessToken)
+        // supabase.realtime.setAuth(accessToken)
 
         // Fetch initial data
         await fetchInitialPositions(
@@ -153,16 +153,34 @@ export function useRealtimeGPS(options: UseRealtimeGpsOptions = {}) {
               fetchVehicleDetails(supabase, updatedLog, setPositions, updatePosition)
             }
           )
-          .subscribe((status, err) => {
-            // 1. Tambahkan log ini untuk melihat status asli yang dikembalikan (misal: CHANNEL_ERROR atau TIMED_OUT)
-            console.log('=== DEBUG STATUS REALTIME ===:', status)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'drivers',
+            },
+            async (payload) => {
+              if (!mounted) return
+              const updatedDriver = payload.new as any
 
+              // Jika status berubah menjadi selain ON_DUTY, langsung depak dari peta live
+              if (updatedDriver.status !== 'ON_DUTY' && updatedDriver.status !== 'on_duty') {
+                setPositions((prev) => prev.filter((p) => p.driver_id !== updatedDriver.id))
+              } else {
+                // Jika driver kembali ON_DUTY, tarik koordinat terakhirnya agar muncul lagi di peta
+                fetchLatestLogForDriver(supabase, updatedDriver.id, setPositions, updatePosition)
+              }
+            }
+          )
+          .subscribe((status, err) => {
+            console.log('=== DEBUG STATUS REALTIME ===:', status)
             if (err) {
               console.error('=== DETAIL ERROR REALTIME ===:', err)
             }
 
             if (status === 'SUBSCRIBED') {
-              console.log('✓ Subscribed to GPS realtime updates')
+              console.log('Subscribed to GPS realtime updates')
               setError(null)
             } else if (status === 'CHANNEL_ERROR') {
               setError('Failed to subscribe to realtime updates')
@@ -221,6 +239,7 @@ async function fetchInitialPositions(
         drivers:driver_id (
           id,
           user_id,
+          status,
           users:users!drivers_user_id_fkey (
             full_name
           )
@@ -234,7 +253,7 @@ async function fetchInitialPositions(
       .limit(1000)
 
     if (gpsError) {
-      console.error('🚨 GAGAL AMBIL DATA POSISI AWAL:', gpsError)
+      // console.error('🚨 GAGAL AMBIL DATA POSISI AWAL:', gpsError)
       throw gpsError
     }
 
@@ -248,6 +267,9 @@ async function fetchInitialPositions(
         if (!vehiclePositions[log.vehicle_id]) {
           const vehicle = Array.isArray(log.vehicles) ? log.vehicles[0] : log.vehicles
           const driver = Array.isArray(log.drivers) ? log.drivers[0] : log.drivers
+          if (!driver || (driver.status !== 'ON_DUTY' && driver.status !== 'on_duty')) {
+            continue
+          }
           const driverUser = driver?.users as any
           const driverName = Array.isArray(driverUser)
             ? driverUser[0]?.full_name
@@ -317,6 +339,7 @@ async function fetchVehicleDetails(
         drivers:driver_id (
           id,
           user_id,
+          status,
           users:users!drivers_user_id_fkey (
             full_name
           )
@@ -330,12 +353,16 @@ async function fetchVehicleDetails(
       .single()
 
     if (error || !log) {
-      console.error('🚨 REALTIME MASUK, TAPI GAGAL AMBIL DETAIL RELASI:', error)
+      // console.error('🚨 REALTIME MASUK, TAPI GAGAL AMBIL DETAIL RELASI:', error)
       return
     }
 
     const vehicle = Array.isArray(log.vehicles) ? log.vehicles[0] : log.vehicles
     const driver = Array.isArray(log.drivers) ? log.drivers[0] : log.drivers
+    if (!driver || (driver.status !== 'ON_DUTY' && driver.status !== 'on_duty')) {
+      setPositions((prev) => prev.filter((p) => p.vehicle_id !== log.vehicle_id))
+      return
+    }
     const driverUser = driver?.users as any
     const driverName = Array.isArray(driverUser) ? driverUser[0]?.full_name : driverUser?.full_name
 
@@ -365,16 +392,65 @@ async function fetchVehicleDetails(
 
     // Update fleet store
     updatePosition(log.vehicle_id, {
+      ...newPosition,
+    })
+  } catch (err) {
+    console.error('Error fetching vehicle details:', err)
+  }
+}
+
+/**
+ * Helper: Ambil log koordinat terakhir saat driver kembali ON_DUTY
+ */
+async function fetchLatestLogForDriver(
+  supabase: SupabaseClient<any, any, any, any, any>,
+  driverId: string,
+  setPositions: (callback: (prev: VehiclePosition[]) => VehiclePosition[]) => void,
+  updatePosition: (vehicleId: string, data: any) => void
+) {
+  try {
+    const { data: log, error } = await supabase
+      .from('gps_logs')
+      .select(
+        `
+        id, vehicle_id, driver_id, lat, lng, speed_kmh, heading, recorded_at,
+        drivers:driver_id ( id, user_id, status, users:user_id ( full_name ) ),
+        vehicles:vehicle_id ( plate_number )
+      `
+      )
+      .eq('driver_id', driverId)
+      .order('recorded_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error || !log) return
+    const driver = Array.isArray(log.drivers) ? log.drivers[0] : log.drivers
+    if (!driver || (driver.status !== 'ON_DUTY' && driver.status !== 'on_duty')) return
+
+    const vehicle = Array.isArray(log.vehicles) ? log.vehicles[0] : log.vehicles
+    const driverUser = driver?.users as any
+    const driverName = Array.isArray(driverUser) ? driverUser[0]?.full_name : driverUser?.full_name
+
+    const newPosition = {
       vehicle_id: log.vehicle_id,
+      driver_id: log.driver_id,
       plate_number: vehicle?.plate_number || 'Unknown',
       driver_name: driverName || 'Unknown Driver',
       lat: parseFloat(log.lat as any),
       lng: parseFloat(log.lng as any),
       speed_kmh: parseFloat((log.speed_kmh as any) || 0),
       heading: parseFloat((log.heading as any) || 0),
-      updated_at: log.recorded_at,
+      recorded_at: log.recorded_at,
+    }
+
+    setPositions((prev) => {
+      const updated = [...prev].filter((p) => p.vehicle_id !== log.vehicle_id)
+      updated.push(newPosition)
+      return updated
     })
-  } catch (err) {
-    console.error('Error fetching vehicle details:', err)
+
+    updatePosition(log.vehicle_id, { ...newPosition, updated_at: log.recorded_at })
+  } catch (e) {
+    console.error(e)
   }
 }
