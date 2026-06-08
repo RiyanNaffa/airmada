@@ -79,6 +79,7 @@ function RegisterContent() {
           user: data.user,
           email: data.email,
           registeredAt: data.registeredAt,
+          access_token: data.access_token,
         })
       )
 

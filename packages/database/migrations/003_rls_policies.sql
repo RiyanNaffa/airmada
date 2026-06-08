@@ -11,8 +11,8 @@ ALTER TABLE analytics_snapshots  ENABLE ROW LEVEL SECURITY;
 
 -- Helper: get current user role
 CREATE OR REPLACE FUNCTION current_user_role()
-RETURNS user_role AS $$
-  SELECT role FROM users WHERE id = auth.uid()
+RETURNS TEXT AS $$
+  SELECT role::TEXT FROM users WHERE id = auth.uid()
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 -- USERS: user bisa baca dirinya sendiri; manager bisa baca semua
@@ -51,3 +51,17 @@ CREATE POLICY "analytics_select" ON analytics_snapshots FOR SELECT
   USING (current_user_role() IN ('manager', 'dispatcher'));
 CREATE POLICY "analytics_insert" ON analytics_snapshots FOR INSERT
   WITH CHECK (current_user_role() = 'manager');
+
+-- GPS_LOGS: drivers can insert their own; manager/dispatcher can read all
+CREATE POLICY "gps_logs_insert_driver" ON gps_logs FOR INSERT
+  WITH CHECK (
+    driver_id = (SELECT id FROM drivers WHERE user_id = auth.uid())
+  );
+-- Allow all authenticated users to insert GPS logs (fallback if driver lookup fails)
+CREATE POLICY "gps_logs_insert_authenticated" ON gps_logs FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+CREATE POLICY "gps_logs_select" ON gps_logs FOR SELECT
+  USING (
+    current_user_role() IN ('MANAGER'::text, 'DISPATCHER'::text)
+  );

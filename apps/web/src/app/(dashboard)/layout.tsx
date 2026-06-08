@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -8,6 +8,7 @@ import {
   // useRouter
 } from 'next/navigation'
 import { useAuth } from '@/components/auth/auth-provider'
+import { useGpsPublish } from '@/hooks/useGpsPublish'
 import {
   LayoutDashboard,
   Truck,
@@ -286,10 +287,14 @@ function Topbar({
   onMenuClick,
   pageTitle,
   currentUser,
+  gpsError,
+  isDriver,
 }: {
   onMenuClick: () => void
   pageTitle: string
   currentUser: CurrentUser
+  gpsError?: string | null
+  isDriver?: boolean
 }) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 lg:px-6">
@@ -304,7 +309,22 @@ function Topbar({
         <span className="text-sm font-semibold text-slate-700 lg:hidden">{pageTitle}</span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        {/* GPS Status Indicator for Drivers */}
+        {isDriver && (
+          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5">
+            <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+            <span className="text-xs font-medium text-green-700">GPS Live</span>
+          </div>
+        )}
+
+        {/* GPS Error Alert */}
+        {gpsError && (
+          <div className="hidden items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 sm:flex">
+            <span className="max-w-xs truncate text-xs font-medium text-red-700">{gpsError}</span>
+          </div>
+        )}
+
         {/* TODO: Hubungkan ke useNotificationStore dan tampilkan unread_count */}
         <button className="relative rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">
           <Bell size={18} />
@@ -312,10 +332,7 @@ function Topbar({
         </button>
         {/* Current user avatar */}
         {/* TODO: Jika klik avatar, tampilkan current user card, ada ref ke /profile */}
-        <div
-          // className="flex h-7 w-7 items-center justify-center rounded-full bg-linear-to-br from-orange-400 to-orange-600 text-xs font-bold text-white"
-          className="flex flex-col items-start gap-6 sm:flex-row sm:items-center"
-        >
+        <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
           {/* {currentUser.initials} */}
           <Image
             src="/dummy/doctor.jpg"
@@ -335,6 +352,10 @@ function Topbar({
 /**
  * Layout utama dashboard — shell dengan Sidebar + Topbar.
  *
+ * Automatically publishes driver GPS location when signed in.
+ * All 3 roles (MANAGER, DISPATCHER, DRIVER) use this layout.
+ * Only DRIVER role will publish GPS coordinates.
+ *
  * @location apps/web/src/app/(dashboard)/layout.tsx
  * TODO: Tambahkan <Sidebar /> dan <Topbar /> dari components/layout
  */
@@ -345,8 +366,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     full_name: 'Andi Wijaya',
     role: 'Manager',
   })
+  const [gpsError, setGpsError] = useState<string | null>(null)
   const pathname = usePathname()
   const { logout, isLoading } = useAuth()
+
+  // Handle GPS publishing errors
+  const handleGpsError = useCallback((error: Error) => {
+    console.error('GPS Publishing Error:', error.message)
+    setGpsError(error.message)
+    // Error message will be cleared after a few seconds
+    setTimeout(() => setGpsError(null), 5000)
+  }, [])
+
+  // Handle successful GPS publishing
+  const handleGpsSuccess = useCallback(() => {
+    console.log('GPS location published')
+    // Clear any previous errors on success
+    setGpsError(null)
+  }, [])
+
+  // Initialize GPS publishing for drivers
+  // This hook will automatically publish location every 15 seconds
+  // Only for users with DRIVER role
+  useGpsPublish({
+    enabled: currentUser.role?.toUpperCase() === 'DRIVER',
+    interval: 15000, // Publish every 15 seconds
+    onError: handleGpsError,
+    onSuccess: handleGpsSuccess,
+  })
 
   // Get current user on mount
   useEffect(() => {
@@ -407,6 +454,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           onMenuClick={() => setSidebarOpen(true)}
           pageTitle={pageTitle}
           currentUser={currentUser}
+          gpsError={gpsError}
+          isDriver={currentUser.role?.toUpperCase() === 'DRIVER'}
         />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>

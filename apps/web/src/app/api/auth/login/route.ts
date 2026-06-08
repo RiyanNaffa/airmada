@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     let userProfile: User | null = null
+    let accessToken: string | null = null
     const authEmail = email
     const loginTime = new Date().toISOString()
 
@@ -50,6 +51,9 @@ export async function POST(req: NextRequest) {
       if (!authData.user) {
         throw new Error('Authentication failed - no user data')
       }
+
+      // Store access token for later use in API requests
+      accessToken = authData.session?.access_token || null
 
       // Fetch user profile from database
       let profile
@@ -95,6 +99,36 @@ export async function POST(req: NextRequest) {
         throw new Error('User profile not found')
       }
 
+      // Ensure driver record exists for DRIVER role users
+      if (profile.role === 'DRIVER') {
+        const { data: existingDriver, error: driverFetchErr } = await supabase
+          .from('drivers')
+          .select('id')
+          .eq('user_id', profile.id)
+          .single()
+
+        if (driverFetchErr && driverFetchErr.code !== 'PGRST116') {
+          // PGRST116 is "no rows found" which is expected
+          console.warn('Failed to fetch driver record:', driverFetchErr)
+        }
+
+        if (!existingDriver) {
+          const { error: insertErr } = await supabase.from('drivers').insert([
+            {
+              user_id: profile.id,
+              status: 'AVAILABLE',
+              total_deliveries: 0,
+              rating: 5,
+            },
+          ])
+
+          if (insertErr) {
+            console.warn('Failed to create driver record during Supabase auth:', insertErr)
+            // Don't throw - allow login to succeed even if driver record creation fails
+          }
+        }
+      }
+
       userProfile = {
         id: profile.id,
         full_name: profile.full_name,
@@ -123,6 +157,37 @@ export async function POST(req: NextRequest) {
         ...profile,
         avatar_url: '/dummy/doctor.jpg',
       } as User
+      // For dummy auth, generate a mock token (won't actually work for Supabase calls)
+      accessToken = 'mock-jwt-token-dummy-auth'
+
+      // For dummy DRIVER users, ensure a driver record exists in the database
+      if (userProfile.role === 'DRIVER') {
+        const supabase = await createClient()
+        const { data: existingDriver } = await supabase
+          .from('drivers')
+          .select('id')
+          .eq('user_id', userProfile.id)
+          .single()
+
+        if (!existingDriver) {
+          try {
+            const { error: insertErr } = await supabase.from('drivers').insert([
+              {
+                user_id: userProfile.id,
+                status: 'AVAILABLE',
+                total_deliveries: 0,
+                rating: 5,
+              },
+            ])
+
+            if (insertErr) {
+              console.warn('Failed to create dummy driver record:', insertErr)
+            }
+          } catch (err) {
+            console.warn('Failed to create dummy driver record:', err)
+          }
+        }
+      }
     }
 
     if (!userProfile) {
@@ -134,6 +199,7 @@ export async function POST(req: NextRequest) {
       user: userProfile,
       email: authEmail,
       loginTime,
+      access_token: accessToken,
     }
 
     // Create response

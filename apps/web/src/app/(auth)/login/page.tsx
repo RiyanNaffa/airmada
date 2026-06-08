@@ -61,6 +61,7 @@ export default function LoginPage() {
         user: data.user as User,
         email: data.email,
         loginTime: data.loginTime,
+        access_token: data.access_token,
       })
       sessionStorage.setItem('user_session', sessionData)
 

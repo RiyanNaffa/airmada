@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
  * Assigns a shipment to a driver and fetches available dispatch data.
  * @location apps/web/src/app/api/dispatch/assign/route.ts
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Gunakan createClient dari server.ts (harus di-await karena menggunakan await cookies())
     const supabase = await createClient()

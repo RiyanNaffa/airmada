@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
 
     let newUser: Record<string, unknown> | null = null
     let sessionData: Record<string, unknown> | null = null
+    let accessToken: string | null = null
     let _requiresEmailConfirmation = false
 
     // ===== TRY: Supabase Registration =====
@@ -69,6 +70,9 @@ export async function POST(request: NextRequest) {
       if (authError || !authData.user) {
         throw new Error(authError?.message || 'Supabase registration failed')
       }
+
+      // Store access token for later use
+      accessToken = authData.session?.access_token || null
 
       // Check if email confirmation is required
       // user.confirmed_at will be null if email confirmation is required
@@ -94,6 +98,23 @@ export async function POST(request: NextRequest) {
         throw new Error('Failed to create user profile')
       }
 
+      // Auto-create driver record for DRIVER role users
+      if (profile.role === 'DRIVER') {
+        const { error: driverError } = await supabase.from('drivers').insert([
+          {
+            user_id: profile.id,
+            status: 'AVAILABLE',
+            total_deliveries: 0,
+            rating: 5,
+          },
+        ])
+
+        if (driverError) {
+          console.warn('Failed to create driver record:', driverError)
+          // Continue anyway - driver record can be created later
+        }
+      }
+
       newUser = {
         id: profile.id,
         full_name: profile.full_name,
@@ -108,6 +129,7 @@ export async function POST(request: NextRequest) {
         user: newUser,
         email,
         loginTime: new Date().toISOString(),
+        access_token: accessToken,
       }
     } catch (supabaseError) {
       console.warn('Supabase registration failed, creating dummy user:', supabaseError)
@@ -122,10 +144,29 @@ export async function POST(request: NextRequest) {
         avatar_url: '/dummy/doctor.jpg',
       }
 
+      // Try to create driver record for dummy DRIVER user
+      if (newUser.role === 'DRIVER') {
+        try {
+          const supabase = await createClient()
+
+          await supabase.from('drivers').insert([
+            {
+              user_id: newUser.id,
+              status: 'AVAILABLE',
+              total_deliveries: 0,
+              rating: 5,
+            },
+          ])
+        } catch (err) {
+          console.warn('Failed to create driver record for dummy user:', err)
+        }
+      }
+
       sessionData = {
         user: newUser,
         email,
         loginTime: new Date().toISOString(),
+        access_token: 'mock-jwt-token-dummy-auth',
       }
     }
 
