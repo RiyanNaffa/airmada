@@ -39,6 +39,39 @@ export function useGpsPublish(options: UseGpsPublishOptions = {}) {
   const isPublishingRef = useRef(false)
 
   useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null
+
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen')
+          console.log('✓ [Wake Lock] Layar dikunci agar tidak mati otomatis saat bertugas.')
+        }
+      } catch (err) {
+        console.warn('Gagal mengaktifkan Wake Lock:', err)
+      }
+    }
+
+    requestWakeLock()
+
+    // Minta ulang jika driver sempat meminimalkan aplikasi lalu membukanya kembali
+    const handleVisibilityChange = () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        requestWakeLock()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      wakeLock?.release().then(() => {
+        wakeLock = null
+      })
+    }
+  }, [])
+
+  useEffect(() => {
     // Jika dimatikan (bukan DRIVER), bersihkan listener pelacakan OS
     if (!enabled) {
       if (watchIdRef.current !== null) {
